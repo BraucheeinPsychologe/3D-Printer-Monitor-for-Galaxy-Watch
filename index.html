@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>3D Printer App</title>
+        <style>
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background: linear-gradient(135deg, #191919 0%, #171b31 100%);
+                font-family:
+                    "Segoe UI",
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                color: #fff;
+                overflow: hidden;
+            }
+
+            #container {
+                width: 85%;
+                height: 85%;
+                border-radius: 50%;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                position: relative;
+                z-index: 1;
+            }
+
+            #PrinterPreview {
+                width: 35%;
+                height: auto;
+                border-radius: 12px;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+                margin-bottom: 10px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+            }
+
+            #PrinterName {
+                font-size: 1.4em;
+                font-weight: 700;
+                margin: 8px 0 4px 0;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                background: linear-gradient(45deg, #00d4ff, #00aaff);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+
+            #PrinterModel {
+                font-size: 0.9em;
+                margin: 0 0 15px 0;
+                opacity: 0.8;
+                font-weight: 300;
+            }
+
+            .temp-container {
+                display: flex;
+                justify-content: space-around;
+                align-items: center;
+                width: 100%;
+                margin-top: 10px;
+                padding: 0 20px;
+                box-sizing: border-box;
+            }
+
+            .temp-item {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 8px 12px;
+                border-radius: 8px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                font-size: 0.85em;
+                font-weight: 500;
+                min-width: 65px;
+            }
+
+            .temp-divider {
+                color: rgba(255, 255, 255, 0.4);
+                font-weight: 300;
+            }
+
+            button {
+                padding: 12px 24px;
+                margin-top: 15px;
+                border: none;
+                border-radius: 25px;
+                font-size: 14px;
+                font-weight: 600;
+                background: linear-gradient(45deg, #00aaff, #0088cc);
+                color: white;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(0, 170, 255, 0.3);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            button:active {
+                transform: translateY(2px);
+                box-shadow: 0 2px 8px rgba(0, 170, 255, 0.4);
+            }
+
+            button:hover {
+                background: linear-gradient(45deg, #0088cc, #006699);
+                box-shadow: 0 6px 20px rgba(0, 170, 255, 0.4);
+            }
+
+            #progressRing {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 95%;
+                height: 95%;
+                z-index: 0;
+                pointer-events: none;
+            }
+
+            #progressText {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 16px;
+                font-weight: 700;
+                color: #00d4ff;
+                text-shadow: 0 2px 8px rgba(0, 212, 255, 0.5);
+                z-index: 1001;
+                background: rgba(0, 0, 0, 0.2);
+                padding: 4px 8px;
+                border-radius: 8px;
+                backdrop-filter: blur(10px);
+            }
+
+            /* Responsive Anpassungen für kleine Displays */
+            @media (max-width: 400px) {
+                #container {
+                    width: 90%;
+                    height: 90%;
+                }
+
+                #PrinterName {
+                    font-size: 1.2em;
+                }
+
+                .temp-item {
+                    font-size: 0.8em;
+                    padding: 6px 8px;
+                    min-width: 55px;
+                }
+
+                button {
+                    padding: 10px 18px;
+                    font-size: 12px;
+                }
+            }
+
+            /* Animation für Ladeeffekte */
+            @keyframes pulse {
+                0% {
+                    opacity: 0.6;
+                }
+                50% {
+                    opacity: 1;
+                }
+                100% {
+                    opacity: 0.6;
+                }
+            }
+
+            .loading {
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="container">
+            <img
+                id="PrinterPreview"
+                src="img/bambulab.png"
+                alt="Printer Preview could not been loaded"
+                style="width: 30%; height: auto" />
+            <p id="PrinterName" style="font-size: 1.5em">PrinterName</p>
+            <p id="PrinterGcode" style="font-size: 1em">PrinterGcode</p>
+            <div class="temp-container">
+                <p id="PrinterNozzelTemp" class="temp-item">Nozzel: --°C</p>
+                <p class="temp-divider"> - </p>
+                <p id="PrinterBedTemp" class="temp-item">Bed: --°C</p>
+            </div>
+        </div>
+
+        <svg id="progressRing" width="360" height="360" viewBox="0 0 120 120">
+            <!-- Hintergrund-Kreis -->
+            <circle cx="60" cy="60" r="54" stroke="#333" stroke-width="12" fill="none" />
+
+            <!-- Fortschritts-Kreis -->
+            <circle
+                cx="60"
+                cy="60"
+                r="54"
+                stroke="#00aaff"
+                stroke-width="12"
+                fill="none"
+                stroke-dasharray="339.292"
+                stroke-dashoffset="339.292"
+                transform="rotate(-90 60 60)"
+                id="progress" />
+        </svg>
+
+        <script type="text/javascript">
+            let token =
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIxYmY4YWE4YmIyOTQ0NjAxYjQ0ZjkwNjMyMWM1ZmIyMiIsImlhdCI6MTc1NTYxODM3MiwiZXhwIjoyMDcwOTc4MzcyfQ.3JB1hjblX-xHRAdx3k9sAnrfdn1WJGFv9WY_fV-_i2I";
+            let URL = "http://homeassistant.local:8123";
+
+            let h1 = document.getElementById("PrinterName");
+            let PrinterPreview = document.getElementById("PrinterPreview");
+            let PrinterNozzelTemp = document.getElementById("PrinterNozzelTemp");
+            let PrinterBedTemp = document.getElementById("PrinterBedTemp");
+            fetchData();
+            setInterval(fetchData, 10000);
+
+            function fetchData() {
+                fetch(`${URL}/api/states/sensor.p1s_01p00c550700160_name_des_druckers`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error("Netzwerkfehler: " + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then((data) => {
+                        h1.textContent = data.state || "Kein Name gefunden";
+                    })
+                    .catch((error) => {
+                        console.error("Fehler beim Laden:", error);
+                        h1.textContent = "Fehler beim Laden";
+                    });
+
+                fetch(`${URL}/api/states/image.p1s_01p00c550700160_titelbild`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error("Netzwerkfehler: " + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then((data) => {
+                        const source = URL + data.attributes.entity_picture;
+                        PrinterPreview.src = source;
+                    })
+                    .catch((error) => {
+                        console.error("Fehler beim Laden:", error);
+                    });
+
+                fetch(`${URL}/api/states/sensor.p1s_01p00c550700160_temperatur_der_duse`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error("Netzwerkfehler: " + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then((data) => {
+                        PrinterNozzelTemp.innerHTML = "Nozzel: " + data.state + "C";
+                    })
+                    .catch((error) => {
+                        console.error("Fehler beim Laden:", error);
+                    });
+
+                fetch(`${URL}/api/states/sensor.p1s_01p00c550700160_druckbetttemperatur`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error("Netzwerkfehler: " + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then((data) => {
+                        PrinterBedTemp.innerHTML = "Bed: " + data.state + "C";
+                    })
+                    .catch((error) => {
+                        console.error("Fehler beim Laden:", error);
+                    });
+
+                fetch(`${URL}/api/states/sensor.p1s_01p00c550700160_druckfortschritt`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error("Netzwerkfehler: " + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then((data) => {
+                        console.log("Printer stauts: ", data.state);
+                        updateProgress(data.state);
+                        if (data.state > 99) {
+                            NotifyTizen("Druck ist abgeschlossen");
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Fehler beim Laden:", error);
+                    });
+
+                fetch(`${URL}/api/states/sensor.p1s_01p00c550700160_gcode_dateiname`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error("Netzwerkfehler: " + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then((data) => {
+                        document.getElementById("PrinterGcode").textContent = data.state || "Unbekanntes Modell";
+                    })
+                    .catch((error) => {
+                        console.error("Fehler beim Laden des Modells:", error);
+                        document.getElementById("PrinterGcode").textContent = "Modell unbekannt";
+                    });
+            }
+
+            function updateProgress(value) {
+                const circle = document.getElementById("progress");
+                const radius = 54;
+                const circumference = 2 * Math.PI * radius;
+                circle.style.strokeDasharray = circumference;
+                circle.style.strokeDashoffset = circumference * (1 - value) / 100;
+            }
+
+            function NotifyTizen(Message) {
+                if (typeof tizen !== "undefined" && tizen.notification) {
+                    var notificationDict = new tizen.Notification(Message);
+                    tizen.notification.post(notificationDict);
+                } else {
+                    console.info("Tizen API nicht verfügbar");
+                }
+            }
+
+            // Optional: runde Anzeige berücksichtigen
+            function adjustForRoundScreen() {
+                if (window.screen && window.screen.availWidth === window.screen.availHeight) {
+                    document.getElementById("container").style.width = "90%";
+                    document.getElementById("container").style.height = "90%";
+                }
+            }
+
+            adjustForRoundScreen();
+        </script>
+    </body>
+</html>
